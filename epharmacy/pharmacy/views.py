@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import render
 from rest_framework import viewsets, permissions, generics
 from .models import Medicine, User
@@ -42,5 +42,14 @@ def index(request):
 
 
 def order(request, id):
-    return HttpResponse("rde", str(id))
+    return JsonResponse("rde", str(id))
+
+def get_all_medicines(request):
+    # Lấy tất cả các đối tượng Medicine từ cơ sở dữ liệu
+    all_medicines = Medicine.objects.all()
+    medicines_list = []
+    for medicine in all_medicines:
+        medicines_list.append(medicine.to_dict())
+    # Trả về chuỗi chứa thông tin về tất cả các sản phẩm
+    return JsonResponse(medicines_list, safe=False)
 

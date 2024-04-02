@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db import models
 from ckeditor.fields import RichTextField
+from django.core.serializers import serialize
+import json
 
 
 class User(AbstractUser):
@@ -50,6 +52,18 @@ class Medicine(models.Model):
 
     def __str__(self):
         return f"{self.name_medicine} - {self.id_medicine}"
+    
+    def to_dict(self):
+        serialized_obj = serialize('python', [self,])
+        fields = serialized_obj[0]['fields']
+    
+    
+        fields['category'] = {
+            'id': self.category.id,
+            'name': self.category.name
+        }
+        
+        return fields
 
 
 class Invoice(models.Model):

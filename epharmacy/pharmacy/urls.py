@@ -36,6 +36,7 @@ urlpatterns = [
     path('order/<int:id>/', views.order, name='order'),
     path('medicine/', views.MedicineSerializer),
     path('admin/', admin_site.urls),
+    path('thuoc/', views.get_all_medicines, name='thuoc'),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
