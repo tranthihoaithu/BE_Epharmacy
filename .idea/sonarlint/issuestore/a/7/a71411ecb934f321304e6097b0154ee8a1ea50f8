@@ -1,0 +1,8 @@
+
+‘python:S2208"GImport only needed names or import the module and then use its members.(ÅÙï„úÿÿÿÿ8Ê¹Åúé1J$02f8f46f-9920-4658-bc9b-3d0e69695009
+‡python:S6559"BSet the fields of this form explicitly instead of using "__all__".(¿¯¸‘8Ì¹Åúé1J$57109cd0-17b5-4d2a-966e-679eadbb3ff3
+python:S117"TRename this parameter "Medicien" to match the regular expression ^[_a-z][a-z0-9_]*$.(–­³»ÿÿÿÿÿ8Î¹Åúé1J$df1c1b27-6b9c-4a26-af46-85ac5242819f
+hpython:S125!"Remove this commented out code.(€ÁÃ±ùÿÿÿÿ8Î¹Åúé1J$db8000c9-c6eb-4b9c-91e9-453485f86c32
+hpython:S125%"Remove this commented out code.(º¢ëşÿÿÿÿ8Î¹Åúé1J$cd48f2e3-40bb-4198-bb09-5d38feb70df5
+hpython:S125E"Remove this commented out code.(ä–á¶ûÿÿÿÿ8Î¹Åúé1J$56904a63-88b2-447b-92c2-1921f9e02863
+hpython:S125R"Remove this commented out code.(ìü”üıÿÿÿÿ8Î¹Åúé1J$e399c8d3-3db0-4bde-95a5-c231f0d24434
