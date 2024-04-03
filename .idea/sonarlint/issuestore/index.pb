@@ -35,3 +35,7 @@ V
 &epharmacy/pharmacy/static/css/main.css,8\0\806d5812b6e18a6ba60ed977779500d003f3f5ee
 ]
 -epharmacy/pharmacy/migrations/0001_initial.py,1\f\1fdf0c71d0896dec56792c6e4859638812ad2da7
+W
+'epharmacy/pharmacy/templates/index.html,3\4\34dae24814231e306962c33493899fac68548c3d
+D
+epharmacy/.gitignore,9\5\95748ef1d90d78f9f1fa6221e8e02f696b565902
