@@ -15,6 +15,7 @@ class MedicienForm(forms.ModelForm):
         fields = '__all__'
 
 
+
 class MedicienAdmin(admin.ModelAdmin):
     form = MedicienForm
     list_display = ['id_medicine', 'name_medicine', 'content', 'stock_quantity', 'price', 'active']

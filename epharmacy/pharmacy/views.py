@@ -25,7 +25,7 @@ class PharmacyViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'list':
-            return[permissions.AllowAny()]
+            return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
     # list(GET) --> XEM dnah sách khóa học
@@ -59,5 +59,5 @@ def get_detail_medicine(request, id):
 
 
 
- 
+
 

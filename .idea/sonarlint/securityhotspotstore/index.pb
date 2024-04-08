@@ -39,3 +39,6 @@ W
 'epharmacy/pharmacy/templates/index.html,3\4\34dae24814231e306962c33493899fac68548c3d
 D
 epharmacy/.gitignore,9\5\95748ef1d90d78f9f1fa6221e8e02f696b565902
+:
+
+.gitignore,a\5\a5cc2925ca8258af241be7e5b0381edf30266302
