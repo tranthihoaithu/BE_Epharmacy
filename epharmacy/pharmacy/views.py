@@ -1,5 +1,5 @@
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, permissions, generics
 from .models import Medicine, User
 from .serializer import MedicineSerializer, UserSerializer
@@ -52,4 +52,12 @@ def get_all_medicines(request):
         medicines_list.append(medicine.to_dict())
     # Trả về chuỗi chứa thông tin về tất cả các sản phẩm
     return JsonResponse(medicines_list, safe=False)
+
+def get_detail_medicine(request, id):
+    medicine = get_object_or_404(Medicine, id_medicine = id)
+    return JsonResponse(medicine.to_dict())
+
+
+
+ 
 
