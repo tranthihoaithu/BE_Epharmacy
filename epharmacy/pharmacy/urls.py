@@ -39,6 +39,7 @@ urlpatterns = [
     path('thuoc/', views.get_all_medicines, name='thuoc'),
     path('thuoc/<id>/', views.get_detail_medicine, name='detail_medicine'),
     path('api/register/', views.RegisterUserAPIView.as_view(), name='register'),
+    path('api/login/', views.LoginUserAPIView.as_view(), name='login'),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
