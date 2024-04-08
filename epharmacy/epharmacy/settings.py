@@ -99,7 +99,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'pharmacy_db',
         'USER': 'root',
-        'PASSWORD': 'Trantienthe2002',
+        'PASSWORD': '123456789',
         'HOST': ''
     },
 }

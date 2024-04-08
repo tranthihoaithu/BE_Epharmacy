@@ -1,9 +1,24 @@
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404
 from rest_framework import viewsets, permissions, generics
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
 from .models import Medicine, User
 from .serializer import MedicineSerializer, UserSerializer
 from rest_framework.parsers import MultiPartParser
+
+
+class RegisterUserAPIView(generics.CreateAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(viewsets.ViewSet, generics.ListAPIView,
@@ -11,6 +26,7 @@ class UserViewSet(viewsets.ViewSet, generics.ListAPIView,
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     parser_classes = [MultiPartParser, ]
+
 
     def get_permissions(self):
         if self.action == 'retrieve':
@@ -25,7 +41,7 @@ class PharmacyViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'list':
-            return[permissions.AllowAny()]
+            return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
     # list(GET) --> XEM dnah sách khóa học
@@ -59,5 +75,5 @@ def get_detail_medicine(request, id):
 
 
 
- 
+
 
