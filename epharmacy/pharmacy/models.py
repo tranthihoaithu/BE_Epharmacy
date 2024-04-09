@@ -51,7 +51,7 @@ class Medicine(models.Model):
     active = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.name_medicine} - {self.id_medicine}"
+        return f"{self.id_medicine}"
     
     def to_dict(self):
         serialized_obj = serialize('python', [self,])
@@ -84,24 +84,43 @@ class DetailInvoice(models.Model):
 
 class Payment(models.Model):
     id_payment = models.AutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
     pay_method = models.CharField(max_length=50)
-    status = models.CharField(max_length=50)
-    payment_date = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+        return self.pay_method
 
 
 class Cart(models.Model):
     id_cart = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
     id_medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
     name = models.CharField(max_length=100, unique=True)
-    quantity = models.IntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.IntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
 
 class DetailCart(models.Model):
     id_cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     id_payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
+
+
+class Order(models.Model):
+    id_order = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
+    shipping_address = models.CharField(max_length=50)
+    status = models.CharField(max_length=50)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    created = models.DateTimeField(auto_now_add=True)
+
+
+class OrderItem(models.Model):
+    id_order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    id_medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1, validators=[MinValueValidator(1)])
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+
 
 
 

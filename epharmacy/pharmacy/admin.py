@@ -79,6 +79,7 @@ admin_site.register(Cart)
 admin_site.register(Unit)
 admin_site.register(User)
 admin_site.register(Permission)
+admin_site.register(Payment)
 
 # admin.site.register(Category)
 # admin.site.register(Medicine, MedicienAdmin)
