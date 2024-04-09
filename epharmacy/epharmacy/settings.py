@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -50,9 +50,18 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATIONS_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication'
-    )
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
 }
-
+JWT_AUTH = {
+    'JWT_SECRET_KEY': 'your-secret-key',  # Khóa bí mật của bạn, hãy thay thế bằng một giá trị ngẫu nhiên và bảo mật hơn
+    'JWT_EXPIRATION_DELTA': timedelta(days=1),  # Thời gian sống của token
+}
+SIMPLE_JWT = {
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
