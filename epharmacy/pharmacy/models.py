@@ -38,7 +38,7 @@ class Medicine(models.Model):
     image = models.ImageField(upload_to='medicine/%y/%m', default=None)
     source = models.CharField(max_length=100)
     stock_quantity = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
-    price = models.DecimalField(max_digits=10, decimal_places=3, default=0, validators=[MinValueValidator(0)])
+    price = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(0)])
     ingredient = models.CharField(max_length=100)
     content = RichTextField()
     uses = models.CharField(max_length=100)
@@ -57,12 +57,12 @@ class Medicine(models.Model):
         serialized_obj = serialize('python', [self,])
         fields = serialized_obj[0]['fields']
     
-    
         fields['category'] = {
             'id': self.category.id,
             'name': self.category.name
         }
-        
+        fields['name_medicine'] = self.name_medicine
+
         return fields
 
 
@@ -93,10 +93,9 @@ class Payment(models.Model):
 class Cart(models.Model):
     id_cart = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, default=1)
-    id_medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
-    name = models.CharField(max_length=100, unique=True)
+    medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE)
     quantity = models.IntegerField(default=1)
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
 
 
 class DetailCart(models.Model):

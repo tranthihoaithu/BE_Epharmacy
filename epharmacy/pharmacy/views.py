@@ -1,14 +1,16 @@
 
 
 from django.contrib.auth import authenticate
-from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, Http404
+from django.shortcuts import render, get_object_or_404, redirect
 from rest_framework import viewsets, permissions, generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 from .models import Medicine, User, OrderItem, Cart
@@ -35,8 +37,18 @@ class LoginUserAPIView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            user = serializer.validated_data
-            return Response({'user': user.username, 'email': user.email, }, status=status.HTTP_200_OK)
+            user = serializer.validated_data  # Lấy đối tượng người dùng từ dữ liệu đã xác thực
+            if user:  # Kiểm tra xem người dùng đã tồn tại không
+                refresh = RefreshToken.for_user(user)  # Tạo RefreshToken cho người dùng đã xác thực
+                access_token = refresh.access_token # Lấy mã token truy cập từ RefreshToken
+
+            return Response({
+                'user': {
+                    'username': user.username,
+                    'email': user.email,
+                },
+                'access_token': str(access_token),
+            }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -89,50 +101,67 @@ def get_all_medicines(request):
     return JsonResponse(medicines_list, safe=False)
 
 
-def get_detail_medicine(request, id_medicine):
-    medicine = get_object_or_404(Medicine, id_medicine=id_medicine)
-    return JsonResponse(medicine.to_dict())
+def get_detail_medicine(request, id):
+    try:
+        medicine = Medicine.objects.get(id_medicine=id)
+        return JsonResponse(medicine.to_dict())
+    except Medicine.DoesNotExist:
+        return JsonResponse({'error': 'No Medicine matches the given query.'}, status=404)
+
+@login_required
+def add_to_cart(request, medicine_id):
+    try:
+        medicine = Medicine.objects.get(id=medicine_id)
+        cart_item, created = Cart.objects.get_or_create(medicine=medicine, user=request.user)
+        if not created:
+            cart_item.quantity += 1
+            cart_item.save()
+        else:
+            cart_item.quantity = 1
+            cart_item.save()
+        serializer_class = CartSerializer(cart_item)
+        return JsonResponse(serializer_class.data, status=status.HTTP_201_CREATED)
+
+    except Medicine.DoesNotExist:
+        return JsonResponse({'error': 'No Medicine matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class CartViewSet(APIView):
-    permission_classes = [IsAuthenticated, ]
-    parser_classes = [MultiPartParser, ]
-    serializer_class = CartSerializer
+    def post(self, request, medicine_id):
+        try:
+            # Chuyển đổi medicine_id sang kiểu int
+            try:
+                medicine_id = int(medicine_id)
+            except ValueError:
+                raise Http404('Invalid medicine ID')
 
-    def post(self, request):
-        # Check if the POST request contains the id_medicine parameter
-        if 'id_medicine' in request.data:
-            id_medicine = request.data['id_medicine']
+            # Lấy thông tin sản phẩm từ cơ sở dữ liệu
+            try:
+                medicine = Medicine.objects.get(id=medicine_id)
+            except Medicine.DoesNotExist:
+                return Response({'error': 'No Medicine matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
 
-            # Get the medicine information from the database
-            medicine_info = get_detail_medicine(request, id_medicine)
+            # Tạo hoặc cập nhật giỏ hàng
+            cart_item, created = Cart.objects.get_or_create(
+                user=request.user,
+                medicine=medicine,
+                defaults={'name': medicine.name, 'price': medicine.price}
+            )
 
-            if medicine_info:
-                # Create or update the cart object in the database
-                cart, created = Cart.objects.get_or_create(user=request.user, id_medicine=id_medicine)
-
-                # If the product already exists in the cart, update the quantity
-                if not created:
-                    cart.quantity += 1
-                else:
-                    cart.quantity = 1  # If the product does not exist, set the quantity to 1
-                # Save the cart in the database
-                cart.save()
-                data = {
-                    'name': medicine_info['name'],
-                    'price': medicine_info['price'],
-                    'quantity': cart.quantity
-                }
-
-                # Serialize the cart object
-
-                return Response(data, status=status.HTTP_201_CREATED)
+            if not created:
+                cart_item.quantity += 1
             else:
-                # Handle the case where the medicine information cannot be retrieved
-                return Response({"message": "Failed to retrieve medicine information"}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            # Handle the case where the id_medicine parameter is missing in the POST request
-            return Response({"message": "Missing id_medicine parameter"}, status=status.HTTP_400_BAD_REQUEST)
+                cart_item.quantity = 1
+
+            cart_item.save()
+
+            # Serialize dữ liệu và trả về phản hồi
+            serializer = CartSerializer(cart_item)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except ValueError:
+            return Response({'error': 'Invalid data type for medicine ID.'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class OrderViewSet(APIView):
     serializer_class = OrderSerializer

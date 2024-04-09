@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "epharmacy"
+version = "0.1.0"
+description = ""
+authors = ["tranhoaithu <tranthihoaithu1112002@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+djangorestframework-jwt = "^1.11.0"
+djangorestframework-simplejwt = "^5.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
