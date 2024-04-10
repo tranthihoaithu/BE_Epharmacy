@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/add/<str:medicine_id>/', views.add_to_cart, name='add_to_cart'),
     path('api/order/', views.OrderViewSet.as_view(), name='order'),
     path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+    path('search/', views.SearchResultsView.as_view(), name='search'),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
     re_path(r'^ckeditor/', include('ckeditor_uploader.urls')),
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
