@@ -1,17 +1,18 @@
 import json
-
-from django.contrib.auth import authenticate
-from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.core.serializers import serialize
+<<<<<<< HEAD
 from django.http import JsonResponse, Http404
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView
+=======
+from django.http import JsonResponse
+from django.shortcuts import render
+>>>>>>> 7dc25bf (fix: search and update quantity, remove quantity, feat:á»order)
 from rest_framework import viewsets, permissions, generics
 from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
 from rest_framework import status
 from rest_framework_jwt.settings import api_settings
 from rest_framework.views import APIView
@@ -218,9 +219,10 @@ class CartViewSet(APIView):
             return JsonResponse({'error': 'No Medicine matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, item_id):
-        cart_item = Cart.objects.get(id=item_id)
+        cart_item = Cart.objects.get(id_cart=item_id)
         cart_item.delete()
-        return redirect('cart:view_cart')
+        return JsonResponse({})
+
 
     def update(self, request):
         if request.method == 'POST':
