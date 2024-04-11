@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'oauth2_provider',
     'drf_yasg',
     'corsheaders',
+    'rest_framework_jwt',
 ]
 
 
