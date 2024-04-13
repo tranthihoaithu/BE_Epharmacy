@@ -27,6 +27,17 @@ class MedicienAdmin(admin.ModelAdmin):
         return mark_safe("<img src='/static/{img_url}' alt='{alt}' />".format(img_url=Medicien.image.name, alt=Medicien.subject))
 
 
+class OrderForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = '__all__'
+
+
+
+class OrderAdmin(admin.ModelAdmin):
+    form = OrderForm
+    list_display = ['id_order', 'user_id', 'total_price', 'shipping_address', 'phone_number', 'receiver', 'payment_id', 'status_id']
+
 
 
 
@@ -80,7 +91,8 @@ admin_site.register(Unit)
 admin_site.register(User)
 admin_site.register(Permission)
 admin_site.register(Payment)
-admin_site.register(Order)
+admin_site.register(Order, OrderAdmin)
+admin_site.register(OfferProduct)
 
 # admin.site.register(Category)
 # admin.site.register(Medicine, MedicienAdmin)

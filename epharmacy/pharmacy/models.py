@@ -1,5 +1,5 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from ckeditor.fields import RichTextField
 from django.core.serializers import serialize
@@ -8,6 +8,7 @@ import json
 
 class User(AbstractUser):
     avatar = models.ImageField(upload_to='upload/%y/%m/%d/', blank=True)
+
 
 #
 # class CreateUser(AbstractUser):
@@ -36,9 +37,13 @@ class Medicine(models.Model):
     unit = models.ForeignKey(Unit, on_delete=models.CASCADE)
     name_medicine = models.CharField(max_length=100, unique=True)
     image = models.ImageField(upload_to='medicine/%y/%m', default=None)
+    image2 = models.ImageField(upload_to='medicine/%y/%m', default=None)
+    image3 = models.ImageField(upload_to='medicine/%y/%m', default=None)
+    image4 = models.ImageField(upload_to='medicine/%y/%m', default=None)
     source = models.CharField(max_length=100)
     stock_quantity = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
-    price = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(0)])
+    price = models.DecimalField(max_digits=10, decimal_places=3,validators=[MinValueValidator(0)])
+    discount_price = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(0)], null=True)
     ingredient = models.CharField(max_length=100)
     content = RichTextField()
     uses = models.CharField(max_length=100)
@@ -52,7 +57,14 @@ class Medicine(models.Model):
 
     def __str__(self):
         return f"{self.id_medicine}"
-    
+
+    @property
+    def discount_percentage(self):
+        if self.discount_price is not None and self.price > 0:
+            return (self.price - self.discount_price) / self.price * 100
+        else:
+            return 0
+
     def to_dict(self):
         serialized_obj = serialize('python', [self,])
         fields = serialized_obj[0]['fields']
@@ -61,10 +73,21 @@ class Medicine(models.Model):
             'id': self.category.id,
             'name': self.category.name
         }
+        fields['unit'] = {
+            'id': self.unit.id,
+            'name': self.unit.name
+        }
         fields['name_medicine'] = self.name_medicine
 
         return fields
 
+
+class OfferProduct(models.Model):
+    medicine = models.OneToOneField(Medicine, related_name='category_offers', on_delete=models.CASCADE)
+    discount = models.IntegerField(validators=[MinValueValidator(0), MaxValueValidator(99)], null=True, default=0)
+    is_active = models.BooleanField(default=True)
+    def __str__(self):
+        return self.medicine.name_medicine
 
 class Invoice(models.Model):
     id_invoice = models.AutoField(primary_key=True)
@@ -97,18 +120,30 @@ class Cart(models.Model):
     quantity = models.IntegerField(default=1)
 
 
-
 class DetailCart(models.Model):
     id_cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
     id_payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
 
 
 class Order(models.Model):
+    PENDING = 'Pending'
+    PROCESSING = 'Processing'
+    SHIPPED = 'Shipped'
+    DELIVERED = 'Delivered'
+
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (PROCESSING, 'Processing'),
+        (SHIPPED, 'Shipped'),
+        (DELIVERED, 'Delivered'),
+    ]
     id_order = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE)
     shipping_address = models.CharField(max_length=50)
-    status = models.CharField(max_length=50)
+    phone_number = models.CharField(max_length=10, default='null')
+    receiver = models.CharField(max_length=50, default='null')
+    status_id = models.CharField(max_length=50, choices=STATUS_CHOICES)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     created = models.DateTimeField(auto_now_add=True)
 
