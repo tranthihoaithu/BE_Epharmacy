@@ -1,14 +1,11 @@
 import json
 from django.db.models import Q
 from django.core.serializers import serialize
-<<<<<<< HEAD
-from django.http import JsonResponse, Http404
-from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import ListView
-=======
-from django.http import JsonResponse
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
->>>>>>> 7dc25bf (fix: search and update quantity, remove quantity, feat:á»order)
+
 from rest_framework import viewsets, permissions, generics
 from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -19,8 +16,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
-from .models import Medicine, User, OrderItem, Cart, Order, Payment
-from .serializer import MedicineSerializer, UserSerializer, LoginSerializer, OrderSerializer, CartSerializer
+from .models import Medicine, User, OrderItem, Cart, Order, Payment, Category
+from .serializer import MedicineSerializer, UserSerializer, LoginSerializer, OrderSerializer, CartSerializer, \
+    OrderItemSerializer
 from rest_framework.parsers import MultiPartParser
 
 jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
@@ -47,17 +45,6 @@ class RegisterUserAPIView(generics.CreateAPIView):
                 'access_token': token,
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-# class RegisterUserAPIView(generics.CreateAPIView):
-#     serializer_class = UserSerializer
-#     permission_classes = [AllowAny]
-#
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         if serializer.is_valid():
-#             self.perform_create(serializer)
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LoginUserAPIView(APIView):
@@ -105,6 +92,19 @@ class PharmacyViewSet(viewsets.ModelViewSet):
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
 
+
+class UserListAPIView(APIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.AllowAny]  # Cho phép truy cập không cần xác thực
+
+    def get_queryset(self):
+        return User.objects.all()
+
+    def get(self, request):
+        queryset = self.get_queryset()
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
+
     # list(GET) --> XEM dnah sách khóa học
     #...(POST)--> THEM KHOA HOC
     #detail --> XEM CHI TIET 1 KHOA HOC
@@ -117,17 +117,51 @@ def index(request):
         'name': 'Hoai Thu'
     })
 
+def generate_pdf(request):
+    # Lấy dữ liệu hoặc context cần thiết để điền vào mẫu PDF
+    context = {
+        'order': Order.objects.get(id_order=1),
+        'items': OrderItem.objects.all(),
+    }
+    template = get_template('index.html')
+    html = template.render(context)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="invoice.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse('Error creating PDF', status=500)
+    return response
+
 
 def order(request, id):
     return JsonResponse("rde", str(id))
 
+
+def get_all_category(request):
+    category_all = Category.objects.all()
+    category_list = []
+    for category in category_all:
+        category_list.append({'id': category.id,'name': category.name })
+    return JsonResponse(category_list, safe=False)
+
+
+def get_category_medicine(request, category_id):
+    try:
+        category = Category.objects.get(id=category_id)
+    except Category.DoesNotExist:
+        return JsonResponse({'error': 'Danh mục không tồn tại'}, status=404)
+    medicines_in_category = Medicine.objects.filter(category=category)
+    medicines_list = []
+    for medicine in medicines_in_category:
+        medicines_list.append(medicine.to_dict())
+    return JsonResponse(medicines_list, safe=False)
+
+
 def get_all_medicines(request):
-    # Lấy tất cả các đối tượng Medicine từ cơ sở dữ liệu
     all_medicines = Medicine.objects.all()
     medicines_list = []
     for medicine in all_medicines:
         medicines_list.append(medicine.to_dict())
-    # Trả về chuỗi chứa thông tin về tất cả các sản phẩm
     return JsonResponse(medicines_list, safe=False)
 
 
@@ -138,6 +172,11 @@ def get_detail_medicine(request, id):
     except Medicine.DoesNotExist:
         return JsonResponse({'error': 'No Medicine matches the given query.'}, status=404)
 
+def calculate_total_price(user):
+    cart_items = Cart.objects.filter(user=user)
+    total_price = sum(cart_item.medicine.price * cart_item.quantity for cart_item in cart_items)
+    return total_price
+
 
 @api_view(['POST'])
 def checkout(request, username):
@@ -145,20 +184,27 @@ def checkout(request, username):
         # Tìm người dùng dựa trên username
         user = User.objects.get(username=username)
         payment = Payment.objects.first()
+        total_price = calculate_total_price(user)
+        body_data = json.loads(request.body)
+        shipping_address = body_data.get("deliveryAddress")
         # Tạo một đơn đặt hàng mới
-        order = Order.objects.create(user=user, payment=payment, status='pending')
+        order = Order.objects.create(user=user, payment=payment, status='pending', total_price=total_price, shipping_address=shipping_address)
         # Lặp qua các mục trong giỏ hàng và tạo OrderItem cho mỗi mục
         cart_items = Cart.objects.filter(user=user)
-        total_price = sum(cart_item.medicine.price * cart_item.quantity for cart_item in cart_items)
         for cart_item in cart_items:
-            order_item = OrderItem.objects.create(
-                order=order,
-                medicine=cart_item.medicine,
-                quantity=cart_item.quantity,
-                price=cart_item.medicine.price * cart_item.quantity
-            )
-        order.total_price = total_price
-        order.save()
+            if cart_item.medicine.stock_quantity >= cart_item.quantity:
+                order_item = OrderItem.objects.create(
+                    id_order=order,
+                    id_medicine=cart_item.medicine,
+                    quantity=cart_item.quantity,
+                    price=cart_item.medicine.price * cart_item.quantity
+                )
+                cart_item.medicine.stock_quantity -= cart_item.quantity
+                cart_item.medicine.save()
+            else:
+
+                return JsonResponse({'error': 'Số lượng đặt hàng lớn hơn số lượng tồn kho của sản phẩm.'},
+                                status=status.HTTP_400_BAD_REQUEST)
         # Xóa tất cả các mục trong giỏ hàng
         cart_items.delete()
 
@@ -168,6 +214,7 @@ def checkout(request, username):
         return Response({'error': 'Người dùng không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['GET'])
 def get_item_cart(request, username):
@@ -183,7 +230,6 @@ def get_item_cart(request, username):
                 'medicine_price': cart_item.medicine.price,
                 'medicine_img': serialize('python', [cart_item.medicine])[0]['fields'].get("image"),
 
-                # Thêm các thông tin khác của sản phẩm nếu cần thiết
             }
             cart_data['medicine'] = item_data
             serialized_data.append(cart_data)
@@ -194,13 +240,13 @@ def get_item_cart(request, username):
 
 
 class CartViewSet(APIView):
-    permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
             # fix
             body_data = json.loads(request.body)
             username = body_data.get("username")
             medicine_id = body_data.get("medicine_id")
+            quantity = body_data.get("quantity", 1)
             # fix
 
             medicine = Medicine.objects.get(id_medicine=medicine_id)
@@ -223,14 +269,12 @@ class CartViewSet(APIView):
         cart_item.delete()
         return JsonResponse({})
 
-
-    def update(self, request):
+    def put(self, request, item_id):
         if request.method == 'POST':
-            cart_item_id = request.POST.get('cart_item_id')
+            cart_item_id = request.POST.get('item_id')
             new_quantity = int(request.POST.get('new_quantity'))
-
             try:
-                cart_item = Cart.objects.get(id=cart_item_id)
+                cart_item = Cart.objects.get(id_cart=cart_item_id)
                 cart_item.quantity = new_quantity
                 cart_item.save()
                 return JsonResponse({'success': True})
@@ -275,28 +319,39 @@ class SearchResultsView(APIView):
 
         return JsonResponse(medicines_list, safe=False)
 
-# def place_order(request):
-#     if request.method == 'POST':
-#         form = OrderForm(request.POST)
-#         if form.is_valid():
-#             order = form.save(commit=False)
-#             order.user = request.user
-#             order.save()
-#             # Lưu thông tin chi tiết đơn hàng
-#             for item in request.session['cart']:
-#                 product = Product.objects.get(pk=item['product_id'])
-#                 OrderItem.objects.create(
-#                     order=order,
-#                     product=product,
-#                     quantity=item['quantity'],
-#                     price=product.price
-#                 )
-#             # Xóa giỏ hàng sau khi đặt hàng
-#             del request.session['cart']
-#             return redirect('order_success')
-#     else:
-#         form = OrderForm()
-#     return render(request, 'place_order.html', {'form': form})
+
+class HistoryViewSet(APIView):
+    serialize_class = OrderSerializer
+
+    def get_orders(self, user_id):
+        orders = Order.objects.filter(user_id=user_id)
+        serializer = self.serialize_class(orders, many=True)
+        return Response({'orders': serializer.data})
+
+    def get_order_items(self, order_id):
+        order_items = OrderItem.objects.filter(id_order_id=order_id)
+        serialized_data = []
+        for order_item in order_items:
+            order_data = OrderItemSerializer(order_item).data
+            item_data = {
+                'id': order_item.id,
+                'quantity': order_item.quantity,
+                'name': order_item.id_medicine.name_medicine,
+                'price': order_item.id_medicine.price
+            }
+            order_data['id_medicine'] = item_data
+            serialized_data.append(item_data)
+        return Response(serialized_data)
+
+    def get(self, request, *args, **kwargs):
+        user_id = self.kwargs.get('user_id')
+        order_id = self.kwargs.get('order_id')
+        if user_id:
+            return self.get_orders(user_id)
+        elif order_id:
+            return self.get_order_items(order_id)
+        return Response(status=400)
+
 
 
 
