@@ -8,7 +8,7 @@ from django.shortcuts import render
 
 from rest_framework import viewsets, permissions, generics
 from rest_framework.decorators import api_view
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_jwt.settings import api_settings
@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
-from .models import Medicine, User, OrderItem, Cart, Order, Payment, Category
+from .models import Medicine, User, OrderItem, Cart, Order, Payment, Category, OfferProduct
 from .serializer import MedicineSerializer, UserSerializer, LoginSerializer, OrderSerializer, CartSerializer, \
     OrderItemSerializer
 from rest_framework.parsers import MultiPartParser
@@ -141,9 +141,17 @@ def get_all_category(request):
     category_all = Category.objects.all()
     category_list = []
     for category in category_all:
-        category_list.append({'id': category.id,'name': category.name })
+        category_list.append({'id': category.id, 'name': category.name})
     return JsonResponse(category_list, safe=False)
 
+
+# get subcategory
+def get_all_subcategory(request, category_id):
+    subcategory_all = Category.objects.filter(parent_id=category_id).all()
+    subcategory_list = []
+    for subcategory in subcategory_all:
+        subcategory_list.append({'id': subcategory.id, 'name': subcategory.name})
+    return JsonResponse(subcategory_list, safe=False)
 
 def get_category_medicine(request, category_id):
     try:
@@ -172,10 +180,26 @@ def get_detail_medicine(request, id):
     except Medicine.DoesNotExist:
         return JsonResponse({'error': 'No Medicine matches the given query.'}, status=404)
 
+
+def get_discount(request, medicine_id):
+    try:
+        medicine = Medicine.objects.get(id=medicine_id)
+        discount_percentage = medicine.discount_percentage
+        return JsonResponse({'discount_percentage': discount_percentage})
+    except Medicine.DoesNotExist:
+        return JsonResponse({'error': 'Medicine not found'}, status=404)
+
+
+
 def calculate_total_price(user):
     cart_items = Cart.objects.filter(user=user)
-    total_price = sum(cart_item.medicine.price * cart_item.quantity for cart_item in cart_items)
+    total_price = sum(
+        cart_item.medicine.discount_price * cart_item.quantity if cart_item.medicine.discount_price
+        else cart_item.medicine.price * cart_item.quantity
+        for cart_item in cart_items
+    )
     return total_price
+
 
 
 @api_view(['POST'])
@@ -188,7 +212,7 @@ def checkout(request, username):
         body_data = json.loads(request.body)
         shipping_address = body_data.get("deliveryAddress")
         # Tạo một đơn đặt hàng mới
-        order = Order.objects.create(user=user, payment=payment, status='pending', total_price=total_price, shipping_address=shipping_address)
+        order = Order.objects.create(user=user, payment=payment, status='Pending', total_price=total_price, shipping_address=shipping_address)
         # Lặp qua các mục trong giỏ hàng và tạo OrderItem cho mỗi mục
         cart_items = Cart.objects.filter(user=user)
         for cart_item in cart_items:
@@ -200,6 +224,8 @@ def checkout(request, username):
                     price=cart_item.medicine.price * cart_item.quantity
                 )
                 cart_item.medicine.stock_quantity -= cart_item.quantity
+                if cart_item.medicine.stock_quantity <= 0:
+                    cart_item.medicine.active = False
                 cart_item.medicine.save()
             else:
 
@@ -229,7 +255,7 @@ def get_item_cart(request, username):
                 'medicine_name': cart_item.medicine.name_medicine,
                 'medicine_price': cart_item.medicine.price,
                 'medicine_img': serialize('python', [cart_item.medicine])[0]['fields'].get("image"),
-
+                'discount_price': cart_item.medicine.discount_price,
             }
             cart_data['medicine'] = item_data
             serialized_data.append(cart_data)
@@ -240,15 +266,13 @@ def get_item_cart(request, username):
 
 
 class CartViewSet(APIView):
+
     def post(self, request):
         try:
-            # fix
             body_data = json.loads(request.body)
             username = body_data.get("username")
             medicine_id = body_data.get("medicine_id")
             quantity = body_data.get("quantity", 1)
-            # fix
-
             medicine = Medicine.objects.get(id_medicine=medicine_id)
             user = User.objects.get(username=username)
             cart_item, created = Cart.objects.get_or_create(medicine=medicine, user=user)
@@ -270,7 +294,7 @@ class CartViewSet(APIView):
         return JsonResponse({})
 
     def put(self, request, item_id):
-        if request.method == 'POST':
+        if request.method == 'PUT':
             cart_item_id = request.POST.get('item_id')
             new_quantity = int(request.POST.get('new_quantity'))
             try:
@@ -337,7 +361,8 @@ class HistoryViewSet(APIView):
                 'id': order_item.id,
                 'quantity': order_item.quantity,
                 'name': order_item.id_medicine.name_medicine,
-                'price': order_item.id_medicine.price
+                'price': order_item.id_medicine.price,
+                'image': serialize('python', [order_item.id_medicine])[0]['fields'].get("image"),
             }
             order_data['id_medicine'] = item_data
             serialized_data.append(item_data)

@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
-from .models import Medicine, User, Order, Cart, Category, OrderItem
+from .models import Medicine, User, Order, Cart, Category, OrderItem, OfferProduct
 
 
 class UserSerializer(ModelSerializer):
@@ -65,4 +65,10 @@ class OrderItemSerializer(ModelSerializer):
 class CategorySerializer(ModelSerializer):
     class Meta:
         model = Category
+        filter = '__all__'
+
+
+class OfferSerializer(ModelSerializer):
+    class Meta:
+        model = OfferProduct
         filter = '__all__'
